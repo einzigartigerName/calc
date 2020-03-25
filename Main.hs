@@ -1,5 +1,7 @@
 module Main where
 
+import Parser
+
 import System.IO
 import System.Exit
 
@@ -15,5 +17,6 @@ main = do
     if (input == "exit")
         then exitWith ExitSuccess
         else do
-            putStrLn ("Input:  " ++ input)
+            -- putStrLn ("Input:  " ++ input)
+            putStrLn $ show $ parse input
             main
