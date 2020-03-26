@@ -5,6 +5,7 @@ import Evaluate
 
 import System.IO
 import System.Exit
+import System.Environment
 
 prompt :: IO String
 prompt = do
@@ -12,24 +13,39 @@ prompt = do
     hFlush stdout
     getLine
 
-main :: IO ()
-main = do
+interactive :: IO ()
+interactive = do
     input <- prompt
     case input of
-        "exit" -> exitWith ExitSuccess
-        ":q" -> exitWith ExitSuccess
-        _ -> case parse input of
-            -- successful parse
-            Result rp -> case eval rp of
-                -- successful evaluated
-                Result re -> do
-                    putStrLn $ show re
-                    main
-                -- eval error
-                Error _ -> do
-                    putStrLn "Mathematical Error!"
-                    main
-            -- parse error
-            Error e -> do
-                putStrLn ("Error: " ++  show e)
-                main
+        "exit" -> exit
+        ":q" -> exit
+        _ -> evaluateInput input interactive
+
+evaluateInput :: String -> IO () -> IO ()
+evaluateInput input fn =  case parse input of
+    -- successful parse
+    Result rp -> case eval rp of
+        -- successful evaluated
+        Result re -> do
+            putStrLn $ show re
+            fn
+        -- eval error
+        Error _ -> do
+            putStrLn "Mathematical Error!"
+            fn
+    -- parse error
+    Error e -> do
+        putStrLn ("Error: " ++  show e)
+        fn
+
+parseArgs :: [String] -> IO ()
+parseArgs [] = interactive
+parseArgs [input] = evaluateInput input exit
+parseArgs _ = exit
+
+exit :: IO ()
+exit = exitWith ExitSuccess
+
+
+main :: IO ()
+main = getArgs >>= parseArgs
