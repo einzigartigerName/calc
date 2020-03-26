@@ -1,5 +1,5 @@
 TARGET		:= calc
-SOURCE		:= Main.hs Parser.hs Dictionary.hs
+SOURCE		:= Main.hs Parser.hs Dictionary.hs Evaluate.hs
 CFLAGS		:= -Wall -Wextra -O2
 
 build: clean

@@ -19,9 +19,17 @@ main = do
         "exit" -> exitWith ExitSuccess
         ":q" -> exitWith ExitSuccess
         _ -> case parse input of
-            Result r -> do
-                putStrLn ("Result: " ++ (show $ eval r))
-                main
+            -- successful parse
+            Result rp -> case eval rp of
+                -- successful evaluated
+                Result re -> do
+                    putStrLn $ show re
+                    main
+                -- eval error
+                Error _ -> do
+                    putStrLn "Mathematical Error!"
+                    main
+            -- parse error
             Error e -> do
                 putStrLn ("Error: " ++  show e)
                 main
