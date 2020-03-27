@@ -1,4 +1,4 @@
-module Parser (Token (..), Result (..), parse, lexer, postfix)
+module Parser (Token (..), Result (..), parse, lexer, postfix, printTokenList)
     where
 
 import Dictionary
@@ -24,7 +24,19 @@ data Token =
     | TokenMinus
     | TokenTimes
     | TokenDiv
-    deriving (Show, Eq)
+    deriving Eq
+
+instance Show Token where
+    show t = case t of
+        TokenNum n -> show n
+        TokenPlus -> "+"
+        TokenMinus -> "-"
+        TokenTimes -> "*"
+        TokenDiv -> "/"
+
+-- pretty print list of Token
+printTokenList :: [Token] -> String
+printTokenList ts = foldl (\acc t -> acc ++ show t ++ " ") "" ts
 
 -- Input to Token List
 lexer :: String -> Result [Token]
