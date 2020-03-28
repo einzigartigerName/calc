@@ -6,6 +6,7 @@ import Evaluate
 import System.IO
 import System.Exit
 import System.Environment
+import System.Console.ANSI
 
 data Flag = Verbose | Normal
 
@@ -21,6 +22,7 @@ interactive flag = do
     case input of
         "exit" -> exit
         ":q" -> exit
+        "clear" -> clearOut >> interactive flag
         _ -> case flag of
             Normal -> evaluateInput input (interactive Normal)
             Verbose -> verbose input (interactive Verbose)
@@ -39,7 +41,7 @@ evaluateInput input fn =  case parse input of
             fn
     -- parse error
     Error e -> do
-        putStrLn ("Error: " ++  show e)
+        printError input e
         fn
 
 verbose :: String -> IO () -> IO ()
@@ -59,8 +61,25 @@ verbose input fn = case lexer input of
                 fn
         -- lexer error
     Error e -> do
-        putStrLn ("Error: " ++  show e)
+        printError input e
         fn
+
+printError :: String -> Int -> IO ()
+printError input i = do
+    printRed "Error:"
+    putStrLn ("\t" ++ input)
+    printRed $ errorLocation "^" i
+    
+errorLocation :: String -> Int -> String
+errorLocation s 0 = "\t" ++ s
+errorLocation s i = errorLocation (' ' : s) (i - 1)
+
+printRed :: String -> IO ()
+printRed s = do
+    setSGR [SetColor Foreground Vivid Red]
+    putStrLn s
+    setSGR [Reset]
+
 
 parseArgs :: [String] -> IO ()
 parseArgs [] = interactive Normal
@@ -73,6 +92,7 @@ parseArgs [input] = evaluateInput input exit
 parseArgs _ = exit
 
 version :: IO ()
+version = putStrLn "v0.1.0"
 
 usage :: IO ()
 usage = do
@@ -82,8 +102,14 @@ usage = do
     putStrLn "\t-v\tverbose\t- print token and postfix"
     putStrLn "\t-V\tversion\t- show version"
 
+clearOut :: IO ()
+clearOut = do
+    clearScreen
+    setCursorPosition 0 0
+
 exit :: IO ()
-exit = exitWith ExitSuccess
+exit = do
+    exitWith ExitSuccess
 
 main :: IO ()
 main = getArgs >>= parseArgs
