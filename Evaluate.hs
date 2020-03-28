@@ -2,9 +2,9 @@ module Evaluate (eval) where
 
 import Parser
 
-eval :: [Token] -> Result Int
+eval :: [Token] -> Result Float
 eval t = eval' t [] 0
-eval' :: [Token] -> [Token] -> Int -> Result Int
+eval' :: [Token] -> [Token] -> Int -> Result Float
 -- Queue empty
 eval' [] [] _ = Result 0
 eval' [] [TokenNum i] _ = Result i
@@ -27,6 +27,10 @@ eval' (TokenDiv : ts) s i = case evalDiv s i of
     Result (r, e)   -> eval' ts r (e + 1)
     Error err       -> Error err
 
+eval' (TokenPower : ts) s i = case evalPower s i of
+    Result (r, e)   -> eval' ts r (e + 1)
+    Error err       -> Error err
+
 evalPlus :: [Token] -> Int -> Result ([Token], Int)
 evalPlus (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum (b + a)) : xs, (e + 1))
 evalPlus _ i = Error (i + 1)
@@ -40,5 +44,9 @@ evalTimes (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum (b * a)) : xs, (
 evalTimes _ i = Error (i + 1)
 
 evalDiv :: [Token] -> Int -> Result ([Token], Int)
-evalDiv (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum (div b a)) : xs, (e + 1))
+evalDiv (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum ((/) b a)) : xs, (e + 1))
 evalDiv _ i = Error (i + 1)
+
+evalPower :: [Token] -> Int -> Result ([Token], Int)
+evalPower (TokenNum a : TokenNum b : xs) e = Result ((TokenNum ((**) b a)) : xs, (e + 1))
+evalPower _ i = Error (i + 1)
