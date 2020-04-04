@@ -2,51 +2,61 @@ module Evaluate (eval) where
 
 import Parser
 
-eval :: [Token] -> Result Float
-eval t = eval' t [] 0
-eval' :: [Token] -> [Token] -> Int -> Result Float
+eval :: [Token] -> Result Double
+eval t = eval' t []
+eval' :: [Token] -> [Token] -> Result Double
 -- Queue empty
-eval' [] [] _ = Result 0
-eval' [] [TokenNum i] _ = Result i
+eval' [] [] = Result 0
+eval' [] [Val i] = Result i
 -- Value
-eval' (TokenNum n: ts) s i = eval' ts (TokenNum n : s) (i + 1) 
+eval' (Val n: ts) s = eval' ts (Val n : s) 
 -- Operator
-eval' (TokenPlus : ts) s i = case evalPlus s i of
-    Result (r, e)   -> eval' ts r (e + 1)
-    Error err       -> Error err
+eval' (Plus : ts) s = case evalPlus s of
+    Result r        -> eval' ts r
+    MathError       -> MathError
 
-eval' (TokenMinus : ts) s i = case evalMinus s i of
-    Result (r, e)   -> eval' ts r (e + 1)
-    Error err       -> Error err
+eval' (Minus : ts) s = case evalMinus s of
+    Result r        -> eval' ts r
+    MathError       -> MathError
 
-eval' (TokenTimes : ts) s i = case evalTimes s i of
-    Result (r, e)   -> eval' ts r (e + 1)
-    Error err       -> Error err
+eval' (Times : ts) s = case evalTimes s of
+    Result r        -> eval' ts r
+    MathError       -> MathError
 
-eval' (TokenDiv : ts) s i = case evalDiv s i of
-    Result (r, e)   -> eval' ts r (e + 1)
-    Error err       -> Error err
+eval' (Div : ts) s = case evalDiv s of
+    Result r        -> eval' ts r
+    MathError       -> MathError
 
-eval' (TokenPower : ts) s i = case evalPower s i of
-    Result (r, e)   -> eval' ts r (e + 1)
-    Error err       -> Error err
+eval' (Power : ts) s = case evalPower s of
+    Result r        -> eval' ts r
+    MathError       -> MathError
 
-evalPlus :: [Token] -> Int -> Result ([Token], Int)
-evalPlus (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum (b + a)) : xs, (e + 1))
-evalPlus _ i = Error (i + 1)
+eval' (Func f : ts) s = case evalFunc f s of
+    Result r        -> eval' ts r
+    MathError       -> MathError
 
-evalMinus :: [Token] -> Int -> Result ([Token], Int)
-evalMinus (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum (b - a)) : xs, (e + 1))
-evalMinus _ i = Error (i + 1)
+evalPlus :: [Token] -> Result [Token]
+evalPlus (Val a : Val b : xs) =  Result ((Val (b + a)) : xs)
+evalPlus _ = MathError
 
-evalTimes :: [Token] -> Int -> Result ([Token], Int)
-evalTimes (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum (b * a)) : xs, (e + 1))
-evalTimes _ i = Error (i + 1)
+evalMinus :: [Token] -> Result [Token]
+evalMinus (Val a : Val b : xs) =  Result ((Val (b - a)) : xs)
+evalMinus _ = MathError
 
-evalDiv :: [Token] -> Int -> Result ([Token], Int)
-evalDiv (TokenNum a : TokenNum b : xs) e =  Result ((TokenNum ((/) b a)) : xs, (e + 1))
-evalDiv _ i = Error (i + 1)
+evalTimes :: [Token] -> Result [Token]
+evalTimes (Val a : Val b : xs) =  Result ((Val (b * a)) : xs)
+evalTimes _ = MathError
 
-evalPower :: [Token] -> Int -> Result ([Token], Int)
-evalPower (TokenNum a : TokenNum b : xs) e = Result ((TokenNum ((**) b a)) : xs, (e + 1))
-evalPower _ i = Error (i + 1)
+evalDiv :: [Token] -> Result [Token]
+evalDiv (Val a : Val b : xs) =  Result ((Val ((/) b a)) : xs)
+evalDiv _ = MathError
+
+evalPower :: [Token] -> Result [Token]
+evalPower (Val a : Val b : xs) = Result ((Val ((**) b a)) : xs)
+evalPower _ = MathError
+
+evalFunc :: Function -> [Token] -> Result [Token]
+evalFunc Tan (Val a : xs) = Result (Val (tan a) : xs)
+evalFunc Sin (Val a : xs) = Result (Val (sin a) : xs)
+evalFunc Cos (Val a : xs) = Result (Val (cos a) : xs)
+evalFunc _ _ = MathError

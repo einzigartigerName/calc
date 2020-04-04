@@ -36,29 +36,36 @@ evaluateInput input fn =  case parse input of
             putStrLn $ show re
             fn
         -- eval error
-        Error _ -> do
+        MathError -> do
             putStrLn "Mathematical Error!"
             fn
-    -- parse error
+    -- lexer error
     Error e -> do
         printError input e
+        fn
+    -- postfix error
+    MathError -> do
+        putStrLn "Mathematical Error!"
         fn
 
 verbose :: String -> IO () -> IO ()
 verbose input fn = case lexer input of
     -- successful lexer
-    Result rl -> let post = postfix rl in
-        do
-        putStrLn ("Token:   " ++ printTokenList rl)    
-        putStrLn ("Postfix: " ++ printTokenList post)
-        case eval post of
-            Result re -> do
-                putStrLn $ ("Result:  " ++ show re ++ "\n")
-                fn
-            -- eval error
-            Error _ -> do
-                putStrLn "Mathematical Error!"
-                fn
+    Result rl -> case postfix rl of
+        Result rp -> do
+            putStrLn ("Token:   " ++ printTokenList rl)    
+            putStrLn ("Postfix: " ++ printTokenList rp)
+            case eval rp of
+                Result re -> do
+                    putStrLn $ ("Result:  " ++ show re ++ "\n")
+                    fn
+                -- eval error
+                MathError -> do
+                    putStrLn "Mathematical Error!"
+                    fn
+        MathError -> do
+            putStrLn "Mathematical Error!"
+            fn
         -- lexer error
     Error e -> do
         printError input e
