@@ -19,7 +19,13 @@ data Associativity = Left | Right
 
 {-----------------Function-----------------}
 data Function = Tan | Sin | Cos
-    deriving (Show, Eq)
+    deriving Eq
+
+instance Show Function where
+    show func = case func of
+        Tan -> "tan"
+        Sin -> "sin"
+        Cos -> "cos"
 
 
 
@@ -93,37 +99,37 @@ lexer' (x : xs) i
 -- Plus
 lexer' ('+' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Plus : r)
-    Error e -> Error e
+    err -> err
 
 -- Minus
 lexer' ('-' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Minus : r)
-    Error e -> Error e
+    err -> err
 
 -- Times
 lexer' ('*' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Times : r)
-    Error e -> Error e
+    err -> err
 
 -- Div
 lexer' ('/' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Div : r)
-    Error e -> Error e
+    err -> err
 
 -- Power
 lexer' ('^' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Power : r)
-    Error e -> Error e
+    err -> err
 
 -- OpenBrack
 lexer' ('(' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (OpenBrack : r)
-    Error e -> Error e
+    err -> err
 
 -- CloseBrack
 lexer' (')' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (CloseBrack : r)
-    Error e -> Error e
+    err -> err
 
 -- not supported Chars
 lexer' (_ : _) i = Error i
@@ -135,7 +141,7 @@ lexNum :: String            -- Input
         -> Result [Token]   -- Result Token or Error
 lexNum xs i = case lexer' rest (i + (length num)) of
     Result r -> Result (Val (read num :: Double) : r)
-    Error e -> Error e
+    err -> err
     where (num, rest) = span (\x -> isDigit x || x == '.') xs
 
 -- lex alpha
@@ -143,27 +149,27 @@ lexAlpha :: String -> Int -> Result([Token])
 -- Tan
 lexAlpha ('t':'a':'n' : xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Tan : r)
-    Error e -> Error e
+    err -> err
 
 -- Sin
 lexAlpha ('s':'i':'n' : xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Sin : r)
-    Error e -> Error e
+    err -> err
 
 -- Cos
 lexAlpha ('c':'o':'s' : xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Cos : r)
-    Error e -> Error e
+    err -> err
 
 -- Pi
 lexAlpha ('P':'I' : xs) i = case lexer' xs (i + 2) of
     Result r -> Result (Pi : r)
-    Error e -> Error e
+    err -> err
 
 -- Eul
 lexAlpha ('E' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Eul : r)
-    Error e -> Error e
+    err -> err
 
 -- not supported Alphas
 lexAlpha _ i = Error i
@@ -185,14 +191,14 @@ postfix' (x : xs) que ops = case x of
     Eul -> postfix' xs (Val getEul : que) ops
     Func _ -> case funcBrackets xs que ops x of
         Result (ts, q, o) -> postfix' ts q o
-        MathError -> MathError
+        _ -> MathError
     OpenBrack -> case brackets xs que (x : ops) of
         Result (ts, q, o) -> postfix' ts q o
-        MathError -> MathError
+        _ -> MathError
     CloseBrack -> MathError
     _ -> case insertOp x xs que ops of
         Result (ts, q, o) -> postfix' ts q o
-        MathError -> MathError
+        _ -> MathError
 
 
 {-----------------Operator into Op-Stack---}
@@ -219,14 +225,15 @@ brackets (x : xs) que ops = case x of
     Eul -> brackets xs (Val getEul : que) ops
     Func _ -> case funcBrackets xs que ops x of
         Result (ts, q, o) -> brackets ts q o
-        MathError -> MathError
+        _ -> MathError
     OpenBrack -> case brackets xs que (x : ops) of
         Result (ts, q, o) -> brackets ts q o
-        MathError -> MathError
+        _ -> MathError
     CloseBrack -> let (q, o) = pushTillBrack que ops in Result (xs, q, o)
     _ -> case insertOp x xs que ops of
         Result (ts, q, o) -> brackets ts q  o
-        MathError -> MathError
+        _ -> MathError
+brackets _ _ _ = MathError
 
 funcBrackets :: [Token]    -- Rest Token
                 -> [Token]  -- Queue
@@ -236,8 +243,8 @@ funcBrackets :: [Token]    -- Rest Token
 funcBrackets (OpenBrack : xs) que ops fun = 
     case brackets xs que (OpenBrack : ops) of
         Result (ts, q, o) -> Result (ts, (fun : q), o)
-        MathError -> MathError
-funncBrackets _ _ _ _ = MathError
+        _ -> MathError
+funcBrackets _ _ _ _ = MathError
 
 {-----------------Utility------------------}
 -- compare Precedence of two Operator
@@ -269,4 +276,4 @@ pushTillBrack q (o : os) = case o of
 parse :: String -> Result [Token]
 parse s = case lexer s of
     Result tok -> postfix tok
-    Error e -> Error e 
+    err -> err 

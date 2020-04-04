@@ -12,28 +12,30 @@ eval' [] [Val i] = Result i
 eval' (Val n: ts) s = eval' ts (Val n : s) 
 -- Operator
 eval' (Plus : ts) s = case evalPlus s of
-    Result r        -> eval' ts r
-    MathError       -> MathError
+    Result r    -> eval' ts r
+    _           -> MathError
 
 eval' (Minus : ts) s = case evalMinus s of
-    Result r        -> eval' ts r
-    MathError       -> MathError
+    Result r    -> eval' ts r
+    _           -> MathError
 
 eval' (Times : ts) s = case evalTimes s of
-    Result r        -> eval' ts r
-    MathError       -> MathError
+    Result r    -> eval' ts r
+    _           -> MathError
 
 eval' (Div : ts) s = case evalDiv s of
-    Result r        -> eval' ts r
-    MathError       -> MathError
+    Result r    -> eval' ts r
+    _           -> MathError
 
 eval' (Power : ts) s = case evalPower s of
-    Result r        -> eval' ts r
-    MathError       -> MathError
+    Result r    -> eval' ts r
+    _           -> MathError
 
 eval' (Func f : ts) s = case evalFunc f s of
-    Result r        -> eval' ts r
-    MathError       -> MathError
+    Result r    -> eval' ts r
+    _           -> MathError
+
+eval' _ _ = MathError
 
 evalPlus :: [Token] -> Result [Token]
 evalPlus (Val a : Val b : xs) =  Result ((Val (b + a)) : xs)

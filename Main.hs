@@ -36,7 +36,7 @@ evaluateInput input fn =  case parse input of
             putStrLn $ show re
             fn
         -- eval error
-        MathError -> do
+        _ -> do
             putStrLn "Mathematical Error!"
             fn
     -- lexer error
@@ -60,15 +60,18 @@ verbose input fn = case lexer input of
                     putStrLn $ ("Result:  " ++ show re ++ "\n")
                     fn
                 -- eval error
-                MathError -> do
+                _ -> do
                     putStrLn "Mathematical Error!"
                     fn
-        MathError -> do
+        _ -> do
             putStrLn "Mathematical Error!"
             fn
         -- lexer error
     Error e -> do
         printError input e
+        fn
+    MathError -> do
+        putStrLn "Mathematical Error!"
         fn
 
 printError :: String -> Int -> IO ()
@@ -99,7 +102,6 @@ parseArgs [input] = evaluateInput input exit
 parseArgs _ = exit
 
 version :: IO ()
-version = putStrLn "v0.1.0"
 
 usage :: IO ()
 usage = do
