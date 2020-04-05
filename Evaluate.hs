@@ -1,41 +1,43 @@
-module Evaluate (eval) where
+module Evaluate (AngleFlag (..), eval) where
 
 import Parser
 
-eval :: [Token] -> Result Double
-eval t = eval' t []
-eval' :: [Token] -> [Token] -> Result Double
+data AngleFlag = Deg | None
+
+eval :: [Token] -> AngleFlag -> Result Double
+eval t aflag = eval' t aflag []
+eval' :: [Token] -> AngleFlag -> [Token] -> Result Double
 -- Queue empty
-eval' [] [] = Result 0
-eval' [] [Val i] = Result i
+eval' [] _ [] = Result 0
+eval' [] _ [Val i] = Result i
 -- Value
-eval' (Val n: ts) s = eval' ts (Val n : s) 
+eval' (Val n: ts) aflag s = eval' ts aflag (Val n : s) 
 -- Operator
-eval' (Plus : ts) s = case evalPlus s of
-    Result r    -> eval' ts r
+eval' (Plus : ts) aflag s = case evalPlus s of
+    Result r    -> eval' ts aflag r
     _           -> MathError
 
-eval' (Minus : ts) s = case evalMinus s of
-    Result r    -> eval' ts r
+eval' (Minus : ts) aflag s = case evalMinus s of
+    Result r    -> eval' ts aflag r
     _           -> MathError
 
-eval' (Times : ts) s = case evalTimes s of
-    Result r    -> eval' ts r
+eval' (Times : ts) aflag s = case evalTimes s of
+    Result r    -> eval' ts aflag r
     _           -> MathError
 
-eval' (Div : ts) s = case evalDiv s of
-    Result r    -> eval' ts r
+eval' (Div : ts) aflag s = case evalDiv s of
+    Result r    -> eval' ts aflag r
     _           -> MathError
 
-eval' (Power : ts) s = case evalPower s of
-    Result r    -> eval' ts r
+eval' (Power : ts) aflag s = case evalPower s of
+    Result r    -> eval' ts aflag r
     _           -> MathError
 
-eval' (Func f : ts) s = case evalFunc f s of
-    Result r    -> eval' ts r
+eval' (Func f : ts) aflag s = case evalFunc f s aflag of
+    Result r    -> eval' ts aflag r
     _           -> MathError
 
-eval' _ _ = MathError
+eval' _ _ _ = MathError
 
 evalPlus :: [Token] -> Result [Token]
 evalPlus (Val a : Val b : xs) =  Result ((Val (b + a)) : xs)
@@ -57,8 +59,20 @@ evalPower :: [Token] -> Result [Token]
 evalPower (Val a : Val b : xs) = Result ((Val ((**) b a)) : xs)
 evalPower _ = MathError
 
-evalFunc :: Function -> [Token] -> Result [Token]
-evalFunc Tan (Val a : xs) = Result (Val (tan a) : xs)
-evalFunc Sin (Val a : xs) = Result (Val (sin a) : xs)
-evalFunc Cos (Val a : xs) = Result (Val (cos a) : xs)
-evalFunc _ _ = MathError
+evalFunc :: Function -> [Token] -> AngleFlag -> Result [Token]
+evalFunc Abs        (Val a : xs) _      = Result (Val (abs a)                      : xs)
+evalFunc Tan        (Val a : xs) aflag  = Result (Val (convDeg aflag (tan a))            : xs)
+evalFunc ATan       (Val a : xs) aflag  = Result (Val (convDeg aflag (atan a))           : xs)
+evalFunc Sin        (Val a : xs) aflag  = Result (Val (convDeg aflag (sin a))            : xs)
+evalFunc ASin       (Val a : xs) aflag  = Result (Val (convDeg aflag (asin a))           : xs)
+evalFunc Cos        (Val a : xs) aflag  = Result (Val (convDeg aflag (cos a))            : xs)
+evalFunc ACos       (Val a : xs) aflag  = Result (Val (convDeg aflag (acos a))           : xs)
+evalFunc Log        (Val a : xs) _      = Result (Val (log a)                      : xs)
+evalFunc Sqrt       (Val a : xs) _      = Result (Val (sqrt a)                     : xs)
+evalFunc Floor      (Val a : xs) _      = Result (Val (fromInteger (floor a))      : xs)
+evalFunc Ceiling    (Val a : xs) _      = Result (Val (fromInteger (ceiling a))    : xs)
+evalFunc _ _ _ = MathError
+
+convDeg :: AngleFlag -> Double -> Double
+convDeg Deg val     = val / (180 * pi)
+convDeg None val    = val

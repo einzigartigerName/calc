@@ -9,7 +9,7 @@ PREFIX			:= /usr/local/
 INSTALL_DIR		:= bin/
 MAN_DIR			:= man/man1/
 
-VERSION			:= v0.1.0
+VERSION			:= v0.2.0
 
 build: clean version
 	ghc $(CFLAGS) -o $(TARGET) $(MAIN) $(MODULES)

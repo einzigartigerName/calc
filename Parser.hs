@@ -1,9 +1,11 @@
+{-# LANGUAGE ViewPatterns #-}
 module Parser (Token (..), Result (..), Function (..), parse, lexer, postfix, printTokenList)
     where
 
 import Dictionary
 
 import Data.Char
+import Data.List (stripPrefix)
 
 {-----------------Result-------------------}
 data Result a = Result a | Error Int | MathError
@@ -18,14 +20,23 @@ data Associativity = Left | Right
 
 
 {-----------------Function-----------------}
-data Function = Tan | Sin | Cos
+data Function = Abs | Tan | ATan | Sin | ASin | Cos | ACos |
+                Log | Sqrt | Floor | Ceiling
     deriving Eq
 
 instance Show Function where
     show func = case func of
-        Tan -> "tan"
-        Sin -> "sin"
-        Cos -> "cos"
+        Abs     -> "abs"
+        Tan     -> "tan"
+        ATan    -> "atan"
+        Sin     -> "sin"
+        ASin    -> "asin"
+        Cos     -> "cos"
+        ACos    -> "acos"
+        Log     -> "log"
+        Sqrt    -> "sqrt"
+        Floor   -> "floor"
+        Ceiling -> "ceil"
 
 
 
@@ -54,7 +65,7 @@ instance Show Token where
         Times       -> "*"
         Div         -> "/"
         Power       -> "^"
-        Func t     -> show t
+        Func f     -> show f
         OpenBrack   -> "("
         CloseBrack  -> ")"
 
@@ -146,20 +157,61 @@ lexNum xs i = case lexer' rest (i + (length num)) of
 
 -- lex alpha
 lexAlpha :: String -> Int -> Result([Token])
+-- Absolut Value
+lexAlpha (stripPrefix "abs" -> Just xs) i = case lexer' xs (i + 3) of
+    Result r -> Result (Func Abs : r)
+    err -> err
+
 -- Tan
-lexAlpha ('t':'a':'n' : xs) i = case lexer' xs (i + 3) of
+lexAlpha (stripPrefix "tan" -> Just xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Tan : r)
     err -> err
 
+-- ATan
+lexAlpha (stripPrefix "atan" -> Just xs) i = case lexer' xs (i + 4) of
+    Result r -> Result (Func ATan : r)
+    err -> err
+
 -- Sin
-lexAlpha ('s':'i':'n' : xs) i = case lexer' xs (i + 3) of
+lexAlpha (stripPrefix "sin" -> Just xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Sin : r)
     err -> err
 
+-- ASin
+lexAlpha (stripPrefix "asin" -> Just xs) i = case lexer' xs (i + 4) of
+    Result r -> Result (Func ASin : r)
+    err -> err
+
 -- Cos
-lexAlpha ('c':'o':'s' : xs) i = case lexer' xs (i + 3) of
+lexAlpha (stripPrefix "cos" -> Just xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Cos : r)
     err -> err
+
+-- ACos
+lexAlpha (stripPrefix "acos" -> Just xs) i = case lexer' xs (i + 4) of
+    Result r -> Result (Func ACos : r)
+    err -> err
+
+-- Log
+lexAlpha (stripPrefix "log" -> Just xs) i = case lexer' xs (i + 3) of
+    Result r -> Result (Func Log : r)
+    err -> err
+
+-- Sqrt
+lexAlpha (stripPrefix "sqrt" -> Just xs) i = case lexer' xs (i + 4) of
+    Result r -> Result (Func Sqrt : r)
+    err -> err
+
+-- Floor
+lexAlpha (stripPrefix "floor" -> Just xs) i = case lexer' xs (i + 5) of
+    Result r -> Result (Func Floor : r)
+    err -> err
+
+-- Ceiling
+lexAlpha (stripPrefix "ceil" -> Just xs) i = case lexer' xs (i + 4) of
+    Result r -> Result (Func Ceiling : r)
+    err -> err
+
 
 -- Pi
 lexAlpha ('P':'I' : xs) i = case lexer' xs (i + 2) of

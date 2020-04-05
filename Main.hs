@@ -8,7 +8,7 @@ import System.Exit
 import System.Environment
 import System.Console.ANSI
 
-data Flag = Verbose | Normal
+data OutputFlag = Verbose | Normal
 
 prompt :: IO String
 prompt = do
@@ -16,21 +16,21 @@ prompt = do
     hFlush stdout
     getLine
 
-interactive :: Flag -> IO ()
-interactive flag = do
+interactive :: OutputFlag -> AngleFlag -> IO ()
+interactive oflag aflag = do
     input <- prompt
     case input of
         "exit" -> exit
         ":q" -> exit
-        "clear" -> clearOut >> interactive flag
-        _ -> case flag of
-            Normal -> evaluateInput input (interactive Normal)
-            Verbose -> verbose input (interactive Verbose)
+        "clear" -> clearOut >> interactive oflag aflag
+        _ -> case oflag of
+            Normal -> evaluateInput input aflag (interactive Normal aflag)
+            Verbose -> verbose input aflag (interactive Verbose aflag)
 
-evaluateInput :: String -> IO () -> IO ()
-evaluateInput input fn =  case parse input of
+evaluateInput :: String -> AngleFlag -> IO () -> IO ()
+evaluateInput input aflag fn =  case parse input of
     -- successful parse
-    Result rp -> case eval rp of
+    Result rp -> case eval rp aflag of
         -- successful evaluated
         Result re -> do
             putStrLn $ show re
@@ -48,14 +48,14 @@ evaluateInput input fn =  case parse input of
         putStrLn "Mathematical Error!"
         fn
 
-verbose :: String -> IO () -> IO ()
-verbose input fn = case lexer input of
+verbose :: String -> AngleFlag -> IO () -> IO ()
+verbose input aflag fn = case lexer input of
     -- successful lexer
     Result rl -> case postfix rl of
         Result rp -> do
             putStrLn ("Token:   " ++ printTokenList rl)    
             putStrLn ("Postfix: " ++ printTokenList rp)
-            case eval rp of
+            case eval rp aflag of
                 Result re -> do
                     putStrLn $ ("Result:  " ++ show re ++ "\n")
                     fn
@@ -92,13 +92,13 @@ printRed s = do
 
 
 parseArgs :: [String] -> IO ()
-parseArgs [] = interactive Normal
+parseArgs [] = interactive Normal None
 parseArgs ["-h"] = usage >> exit
 parseArgs ["-V"] = version >> exit
-parseArgs ["-v"] = interactive Verbose
-parseArgs (input : "-v" : []) = verbose input exit
-parseArgs ("-v" : input : []) = verbose input exit
-parseArgs [input] = evaluateInput input exit
+parseArgs ["-v"] = interactive Verbose None
+parseArgs (input : "-v" : []) = verbose input None exit
+parseArgs ("-v" : input : []) = verbose input None exit
+parseArgs [input] = evaluateInput input None exit
 parseArgs _ = exit
 
 version :: IO ()
