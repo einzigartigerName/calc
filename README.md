@@ -7,14 +7,14 @@ simple interactive command line calculator.
 * `-V` version
 
 ## Feature
-Syntay: 'func(..)'
-* 'abs'
-* 'tan', 'sin', 'cos'
-* 'atan', 'asin', 'acos'
-* 'log'
-* 'sqrt'
-* 'floor'
-* 'ceil'
+Syntay: ´func(..)´
+* ´abs´
+* ´tan´, ´sin´, ´cos´
+* ´atan´, ´asin´, ´acos´
+* ´log´
+* ´sqrt´
+* ´floor´
+* ´ceil´
 
 ## Dependencies
 * ghc
