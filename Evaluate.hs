@@ -60,19 +60,19 @@ evalPower (Val a : Val b : xs) = Result ((Val ((**) b a)) : xs)
 evalPower _ = MathError
 
 evalFunc :: Function -> [Token] -> AngleFlag -> Result [Token]
-evalFunc Abs        (Val a : xs) _      = Result (Val (abs a)                      : xs)
-evalFunc Tan        (Val a : xs) aflag  = Result (Val (convDeg aflag (tan a))            : xs)
-evalFunc ATan       (Val a : xs) aflag  = Result (Val (convDeg aflag (atan a))           : xs)
-evalFunc Sin        (Val a : xs) aflag  = Result (Val (convDeg aflag (sin a))            : xs)
-evalFunc ASin       (Val a : xs) aflag  = Result (Val (convDeg aflag (asin a))           : xs)
-evalFunc Cos        (Val a : xs) aflag  = Result (Val (convDeg aflag (cos a))            : xs)
-evalFunc ACos       (Val a : xs) aflag  = Result (Val (convDeg aflag (acos a))           : xs)
-evalFunc Log        (Val a : xs) _      = Result (Val (log a)                      : xs)
-evalFunc Sqrt       (Val a : xs) _      = Result (Val (sqrt a)                     : xs)
-evalFunc Floor      (Val a : xs) _      = Result (Val (fromInteger (floor a))      : xs)
-evalFunc Ceiling    (Val a : xs) _      = Result (Val (fromInteger (ceiling a))    : xs)
+evalFunc Abs        (Val a : xs) _      = Result (Val (abs a)                       : xs)
+evalFunc Tan        (Val a : xs) aflag  = Result (Val (tan  (convDeg aflag a))      : xs)
+evalFunc ATan       (Val a : xs) aflag  = Result (Val (atan (convDeg aflag  a))     : xs)
+evalFunc Sin        (Val a : xs) aflag  = Result (Val (sin  (convDeg aflag a))      : xs)
+evalFunc ASin       (Val a : xs) aflag  = Result (Val (asin (convDeg aflag  a))     : xs)
+evalFunc Cos        (Val a : xs) aflag  = Result (Val (cos  (convDeg aflag a))      : xs)
+evalFunc ACos       (Val a : xs) aflag  = Result (Val (acos (convDeg aflag  a))     : xs)
+evalFunc Log        (Val a : xs) _      = Result (Val (log a)                       : xs)
+evalFunc Sqrt       (Val a : xs) _      = Result (Val (sqrt a)                      : xs)
+evalFunc Floor      (Val a : xs) _      = Result (Val (fromInteger (floor a))       : xs)
+evalFunc Ceiling    (Val a : xs) _      = Result (Val (fromInteger (ceiling a))     : xs)
 evalFunc _ _ _ = MathError
 
 convDeg :: AngleFlag -> Double -> Double
-convDeg Deg val     = val / (180 * pi)
+convDeg Deg val     = val * (pi / 180)
 convDeg None val    = val

@@ -9,6 +9,9 @@ import System.Environment
 import System.Console.ANSI
 
 data OutputFlag = Verbose | Normal
+data InteractiveFlag = Interactive | Single
+
+type Flags = (InteractiveFlag, OutputFlag, AngleFlag)
 
 prompt :: IO String
 prompt = do
@@ -24,11 +27,11 @@ interactive oflag aflag = do
         ":q" -> exit
         "clear" -> clearOut >> interactive oflag aflag
         _ -> case oflag of
-            Normal -> evaluateInput input aflag (interactive Normal aflag)
-            Verbose -> verbose input aflag (interactive Verbose aflag)
+            Normal -> evalNormal input aflag (interactive oflag aflag)
+            Verbose -> evalVerbose input aflag (interactive oflag aflag)
 
-evaluateInput :: String -> AngleFlag -> IO () -> IO ()
-evaluateInput input aflag fn =  case parse input of
+evalNormal :: String -> AngleFlag -> IO () -> IO ()
+evalNormal input aflag fn =  case parse input of
     -- successful parse
     Result rp -> case eval rp aflag of
         -- successful evaluated
@@ -48,8 +51,8 @@ evaluateInput input aflag fn =  case parse input of
         putStrLn "Mathematical Error!"
         fn
 
-verbose :: String -> AngleFlag -> IO () -> IO ()
-verbose input aflag fn = case lexer input of
+evalVerbose :: String -> AngleFlag -> IO () -> IO ()
+evalVerbose input aflag fn = case lexer input of
     -- successful lexer
     Result rl -> case postfix rl of
         Result rp -> do
@@ -91,25 +94,36 @@ printRed s = do
     setSGR [Reset]
 
 
-parseArgs :: [String] -> IO ()
-parseArgs [] = interactive Normal None
-parseArgs ["-h"] = usage >> exit
-parseArgs ["-V"] = version >> exit
-parseArgs ["-v"] = interactive Verbose None
-parseArgs (input : "-v" : []) = verbose input None exit
-parseArgs ("-v" : input : []) = verbose input None exit
-parseArgs [input] = evaluateInput input None exit
-parseArgs _ = exit
+parseArgs :: [String] -> Flags -> IO ()
+parseArgs [] fs = execute fs Nothing
+parseArgs ("-d" : xs ) (i, o, _) = parseArgs xs (i, o, Deg)
+parseArgs ("-h" : _) _ = usage >> exit
+parseArgs ("-i" : xs) (_, o, a) = parseArgs xs (Interactive, o, a)
+parseArgs ("-v" : xs) (i, _, a) = parseArgs xs (i, Verbose, a)
+parseArgs ("-V" : _) _ = version >> exit
+parseArgs [input] fs = execute fs (Just input)
+parseArgs _ _ = usage >> exit
+
+
+execute :: Flags -> Maybe String -> IO ()
+execute (Interactive, Verbose, a) (Just input) =    evalVerbose input a (interactive Verbose a)
+execute (Interactive, Normal, a) (Just input) =     evalNormal input a (interactive Normal a)
+execute (Single, Verbose, a) (Just input) =         evalVerbose input a exit
+execute (Single, Normal, a) (Just input) =          evalNormal input a exit
+execute (_, v, a) Nothing =                         interactive v a
 
 version :: IO ()
 
 usage :: IO ()
 usage = do
     putStrLn "Usage:"
-    putStrLn "\tcalc [TERM] [ARGUMENT] - Calculator\n"
-    putStrLn "\t-h\thelp\t- show this dialog"
-    putStrLn "\t-v\tverbose\t- print token and postfix"
-    putStrLn "\t-V\tversion\t- show version"
+    putStrLn "\tcalc [ARGUMENT] [TERM] - Calculator"
+    putStrLn "\t[TERM] musst be at the end.\n"
+    putStrLn "\t-d\tdegrese\t\t- use degree in trigonometric functions"
+    putStrLn "\t-h\thelp\t\t- show this dialog"
+    putStrLn "\t-i\tinteractive\t- force interactive mode"
+    putStrLn "\t-v\tverbose\t\t- print token and postfix"
+    putStrLn "\t-V\tversion\t\t- show version"
 
 clearOut :: IO ()
 clearOut = do
@@ -121,4 +135,6 @@ exit = do
     exitWith ExitSuccess
 
 main :: IO ()
-main = getArgs >>= parseArgs
+main = do
+    args <- getArgs
+    parseArgs args (Single, Normal, None)
