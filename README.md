@@ -9,7 +9,7 @@ simple interactive command line calculator.
 * `-V` version
 
 ## Feature
-Syntay: `func(..)`
+Syntax: `func(..)`
 * `abs`
 * `tan`, `sin`, `cos`
 * `atan`, `asin`, `acos`
