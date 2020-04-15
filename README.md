@@ -14,6 +14,7 @@ Syntax: `func(..)`
 * `tan`, `sin`, `cos`
 * `atan`, `asin`, `acos`
 * `log`
+* `exp`
 * `sqrt`
 * `floor`
 * `ceil`

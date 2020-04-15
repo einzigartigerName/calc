@@ -21,7 +21,7 @@ data Associativity = Left | Right
 
 {-----------------Function-----------------}
 data Function = Abs | Tan | ATan | Sin | ASin | Cos | ACos |
-                Log | Sqrt | Floor | Ceiling
+                Log | Exp | Sqrt | Floor | Ceiling
     deriving Eq
 
 instance Show Function where
@@ -34,6 +34,7 @@ instance Show Function where
         Cos     -> "cos"
         ACos    -> "acos"
         Log     -> "log"
+        Exp     -> "exp"
         Sqrt    -> "sqrt"
         Floor   -> "floor"
         Ceiling -> "ceil"
@@ -195,6 +196,11 @@ lexAlpha (stripPrefix "acos" -> Just xs) i = case lexer' xs (i + 4) of
 -- Log
 lexAlpha (stripPrefix "log" -> Just xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Log : r)
+    err -> err
+
+-- Exp
+lexAlpha (stripPrefix "exp" -> Just xs) i = case lexer' xs (i + 3) of
+    Result r -> Result (Func Exp : r)
     err -> err
 
 -- Sqrt
