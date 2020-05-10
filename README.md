@@ -8,7 +8,7 @@ simple interactive command line calculator.
 * `-v` verbose mode: outputs token and postfix notation
 * `-V` version
 
-## Feature
+## Supported Functions
 Syntax: `func(..)`
 * `abs`
 * `tan`, `sin`, `cos`
@@ -18,6 +18,9 @@ Syntax: `func(..)`
 * `sqrt`
 * `floor`
 * `ceil`
+
+## Input History
+Use the up and down arrow keys so scroll through your sessions input history
 
 ## Dependencies
 * ghc

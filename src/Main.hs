@@ -1,97 +1,250 @@
 module Main where
 
-import Parser
-import Evaluate
 import ANSI
+import Cursor as C
+import Evaluate
+import Parser
 
-import System.IO
-import System.Exit
-import System.Environment
--- import System.Console.ANSI
+import Control.Exception    (finally, catch, IOException)
+import Control.Monad        (when)
+
+import Data.Char            (isSpace)
+import Data.List            (dropWhileEnd)
+
+import System.Environment   (getArgs)
+import System.Exit          (exitWith, ExitCode (..))
+import System.IO            (hFlush, stdout)
+import System.Posix.IO      (fdRead, stdInput)
+import System.Posix.Terminal
+
 
 data OutputFlag = Verbose | Normal
 data InteractiveFlag = Interactive | Single
 
 type Flags = (InteractiveFlag, OutputFlag, AngleFlag)
 
-prompt :: IO String
-prompt = do
-    putStr "λ "
-    hFlush stdout
-    getLine
+{-------------------------------------------------------------------------------------------------
+                                            Input
+-------------------------------------------------------------------------------------------------}
 
-interactive :: OutputFlag -> AngleFlag -> IO ()
-interactive oflag aflag = do
-    input <- prompt
+-- run in raw input / non-canonical mode
+withRawInput :: Int -> Int -> IO a -> IO a
+withRawInput vmin vtime application = do
+
+    -- retrieve current settings
+    oldTermSettings <- getTerminalAttributes stdInput
+
+    -- modify settings
+    let newTermSettings = 
+            flip withoutMode  EnableEcho   . -- don't echo keystrokes
+            flip withoutMode  ProcessInput . -- turn on non-canonical mode
+            flip withTime     vtime        . -- wait at most vtime decisecs per read
+            flip withMinInput vmin         $ -- wait for >= vmin bytes per read
+            oldTermSettings
+
+    -- install new settings
+    setTerminalAttributes stdInput newTermSettings Immediately
+
+    -- restore old settings no matter what; this prevents the terminal
+    application 
+        `finally` setTerminalAttributes stdInput oldTermSettings Immediately
+
+-- handle key input
+readInputFromTerminal :: String                     -- buffer
+                    -> Cursor String                -- history
+                    -> (OutputFlag, AngleFlag)      -- flags to execute with
+                    -> IO (String, Cursor String)   -- new buffer and history
+readInputFromTerminal buffer history flags = (do
+    (str, _) <- fdRead stdInput 3
+    case str of
+        -- no new input -> return buffer
+        ""          -> return (buffer, history)
+
+        -- delete last char in buffer
+        "\DEL"      -> return $ if buffer /= []
+            then (init buffer, history)
+            else ([], history)
+        
+        -- next in history
+        "\ESC[A"    -> return $ historyUp history buffer
+        
+        -- previous in history
+        "\ESC[B"    -> return $ historyDown history buffer
+        
+        -- deactivate left/right
+        "\ESC[C"    -> return $ (buffer, history)
+        "\ESC[D"    -> return $ (buffer, history)
+        
+        -- on new line use buffer
+        "\n"        -> do
+            cursor <- useBuffer buffer history flags
+            return ([], cursor)
+        -- usable input, write to buffer
+        x           -> return $ (buffer ++ x, history)
+  ) `catch` (
+    (const $ return (buffer, history) :: IOException -> IO (String, Cursor String))
+  )
+
+
+
+
+-- go up in history
+historyUp :: Cursor String                          -- Current history
+            -> String                               -- buffer if nothing is in history
+            -> (String, Cursor String)              -- buffer to write, shifted history
+historyUp history buffer = case C.selected history of
+    Just sel -> case C.selectNext history of
+        Just c -> (sel, c)
+        Nothing -> (sel, history)
+    Nothing -> (buffer, C.fromList [])
+
+-- go down in history
+historyDown :: Cursor String                        -- Current history
+            -> String                               -- buffer if nothing is in history
+            -> (String, Cursor String)              -- buffer to write, shifted history
+historyDown history buffer = case C.selectPrevious history of
+    Just c -> case C.selected c of
+        Just sel -> (sel, c)
+        Nothing -> (buffer, history)
+    Nothing -> ("", history)
+
+
+
+-- strip leading/trailing whitespace
+cleanBuffer :: String -> String
+cleanBuffer = dropWhileEnd isSpace . dropWhile isSpace
+
+-- main loop: read and write buffer
+loop :: String                                      -- buffer
+    -> Cursor String                                -- history
+    -> (OutputFlag, AngleFlag)                      -- flags to operate with
+    -> IO ()
+loop buff curs flags = do
+    (buffer, history) <- readInputFromTerminal buff curs flags
+    when (buffer /= buff) (writeBuffer buffer)
+    loop buffer history flags
+
+
+
+
+{-------------------------------------------------------------------------------------------------
+                                            Output
+-------------------------------------------------------------------------------------------------}
+
+-- write Buffer to terminal
+writeBuffer :: String -> IO ()
+writeBuffer buffer = do
+    moveCursorEOL
+    clearLine
+    prompt
+    putStr buffer
+    hFlush stdout
+
+-- print the prompt
+prompt :: IO ()
+prompt = putStr "λ "
+
+-- print error
+printError :: String -> Int -> IO ()
+printError input i = do
+    printRed "Error:"
+    putStrLn ("\t" ++ input)
+    moveToErrorLocation i
+    printRed "^"
+
+-- move error pointer to correct position
+moveToErrorLocation :: Int -> IO ()
+moveToErrorLocation i = do
+    putStr "\t"
+    moveCursorRight i
+
+-- Prints inout in Red with new line
+printRed :: String -> IO ()
+printRed s = let red = Style {fg = Red, bg = Black, attr = []} in
+    printLnStyled red s
+
+
+
+
+{-------------------------------------------------------------------------------------------------
+                                            Evaluation
+-------------------------------------------------------------------------------------------------}
+
+-- update history, and start evaluation
+useBuffer :: String                                 -- buffer to use
+            -> Cursor String                        -- history to add to
+            -> (OutputFlag, AngleFlag)              -- flags to execute with
+            -> IO (Cursor String)                   -- new history
+useBuffer buffer history (oflag, aflag) =
+    let buff = cleanBuffer buffer
+        cursor = C.fromList $ (C.toList history) ++ [buff]
+    in if buff /= []
+        then do
+            putStr "\n"
+            interactive buff oflag aflag
+            return cursor
+        else do
+            putStr "\n"
+            writeBuffer ""
+            return history
+
+-- first instance to get buffer -> exit, clear screen or evaluate input
+interactive :: String                               -- Input Buffer
+            -> OutputFlag                           -- Verbose or not
+            -> AngleFlag                            -- angle in deg
+            -> IO ()
+interactive input oflag aflag = do
     case input of
         "exit" -> exit
         ":q" -> exit
-        "clear" -> clearOut >> interactive oflag aflag
+        "clear" -> clearScreen
         _ -> case oflag of
-            Normal -> evalNormal input aflag (interactive oflag aflag)
-            Verbose -> evalVerbose input aflag (interactive oflag aflag)
+            Normal -> evalNormal input aflag
+            Verbose -> evalVerbose input aflag
 
-evalNormal :: String -> AngleFlag -> IO () -> IO ()
-evalNormal input aflag fn =  case parse input of
+-- evaluate and print only result
+evalNormal :: String                                -- Input Buffer
+            -> AngleFlag                            -- Angle in deg
+            -> IO ()
+evalNormal input aflag =  case parse input of
     -- successful parse
     Result rp -> case eval rp aflag of
         -- successful evaluated
-        Result re -> do
-            putStrLn $ show re
-            fn
+        Result re -> putStrLn $ show re
         -- eval error
-        _ -> do
-            putStrLn "Mathematical Error!"
-            fn
+        _ -> putStrLn "Mathematical Error!"
     -- lexer error
-    Error e -> do
-        printError input e
-        fn
+    Error e -> printError input e
     -- postfix error
-    MathError -> do
-        putStrLn "Mathematical Error!"
-        fn
+    MathError -> putStrLn "Mathematical Error!"
 
-evalVerbose :: String -> AngleFlag -> IO () -> IO ()
-evalVerbose input aflag fn = case lexer input of
+-- evaluate and print Token, Postfix and Result
+evalVerbose :: String                               -- Input Buffer
+            -> AngleFlag                            -- Nagle in deg
+            -> IO ()
+evalVerbose input aflag = case lexer input of
     -- successful lexer
     Result rl -> case postfix rl of
         Result rp -> do
             putStrLn ("Token:   " ++ printTokenList rl)    
             putStrLn ("Postfix: " ++ printTokenList rp)
             case eval rp aflag of
-                Result re -> do
-                    putStrLn $ ("Result:  " ++ show re ++ "\n")
-                    fn
+                Result re -> putStrLn $ ("Result:  " ++ show re ++ "\n")
                 -- eval error
-                _ -> do
-                    putStrLn "Mathematical Error!"
-                    fn
-        _ -> do
-            putStrLn "Mathematical Error!"
-            fn
+                _ -> putStrLn "Mathematical Error!"
+        _ -> putStrLn "Mathematical Error!"
         -- lexer error
-    Error e -> do
-        printError input e
-        fn
-    MathError -> do
-        putStrLn "Mathematical Error!"
-        fn
+    Error e -> printError input e
+    MathError -> putStrLn "Mathematical Error!"
 
-printError :: String -> Int -> IO ()
-printError input i = do
-    printRed "Error:"
-    putStrLn ("\t" ++ input)
-    printRed $ errorLocation "^" i
-    
-errorLocation :: String -> Int -> String
-errorLocation s 0 = "\t" ++ s
-errorLocation s i = errorLocation (' ' : s) (i - 1)
 
-printRed :: String -> IO ()
-printRed s = let red = Style {fg = Red, bg = Black, attr = []} in
-    printLnStyled red s
 
+
+{-------------------------------------------------------------------------------------------------
+                                    Command Line Args
+-------------------------------------------------------------------------------------------------}
+
+-- parse args and start executing
 parseArgs :: [String] -> Flags -> IO ()
 parseArgs [] fs = execute fs Nothing
 parseArgs ("-d" : xs ) (i, o, _) = parseArgs xs (i, o, Deg)
@@ -102,16 +255,44 @@ parseArgs ("-V" : _) _ = version >> exit
 parseArgs [input] fs = execute fs (Just input)
 parseArgs _ _ = usage >> exit
 
-
+-- execute with flags
 execute :: Flags -> Maybe String -> IO ()
-execute (Interactive, Verbose, a) (Just input) =    evalVerbose input a (interactive Verbose a)
-execute (Interactive, Normal, a) (Just input) =     evalNormal input a (interactive Normal a)
-execute (Single, Verbose, a) (Just input) =         evalVerbose input a exit
-execute (Single, Normal, a) (Just input) =          evalNormal input a exit
-execute (_, v, a) Nothing =                         interactive v a
+execute (mode, oflag, aflag) input = case input of
+    Just i ->   case mode of
+        Interactive -> argThenInteractive i oflag aflag
+        Single      -> argEvaluation i oflag aflag
+    Nothing ->  startLoop oflag aflag
 
+-- evaluate buffer then exit
+argEvaluation :: String -> OutputFlag -> AngleFlag -> IO ()
+argEvaluation input oflag aflag = do
+    case oflag of
+        Verbose -> evalVerbose  input aflag 
+        Normal  -> evalNormal   input aflag
+    exit
+
+-- first evaluates input then starts loop
+argThenInteractive :: String
+                    -> OutputFlag
+                    -> AngleFlag
+                    -> IO ()
+argThenInteractive input oflag aflag = do
+    case oflag of
+        Verbose -> evalVerbose  input aflag 
+        Normal  -> evalNormal   input aflag
+    startLoop oflag aflag
+
+
+-- starts loop with given flags
+startLoop :: OutputFlag -> AngleFlag -> IO ()
+startLoop oflag aflag = do
+    writeBuffer []
+    withRawInput 0 1 $ loop "" (C.fromList []) (oflag, aflag)
+
+-- version
 version :: IO ()
 
+-- print usage
 usage :: IO ()
 usage = do
     putStrLn "Usage:"
@@ -123,14 +304,20 @@ usage = do
     putStrLn "\t-v\tverbose\t\t- print token and postfix"
     putStrLn "\t-V\tversion\t\t- show version"
 
-clearOut :: IO ()
-clearOut = do
-    clearScreen
 
+
+
+{-------------------------------------------------------------------------------------------------
+                                        Start / Finish
+-------------------------------------------------------------------------------------------------}
+
+-- exit programm
 exit :: IO ()
-exit = do
-    exitWith ExitSuccess
+exit = exitWith ExitSuccess
 
+-- run with:
+-- VMIN  = 0 (don't wait for a fixed number of bytes)
+-- VTIME = 1 (wait for at most 1/10 sec before fdRead returns)
 main :: IO ()
 main = do
     args <- getArgs

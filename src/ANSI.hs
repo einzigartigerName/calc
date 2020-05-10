@@ -3,11 +3,17 @@ module ANSI
     , Color (..)
     , Attribute (..)
     , clearScreen
+    , clearLine
+    , deleteN
+    , moveCursorEOL
+    , moveCursorLeft
+    , moveCursorRight
     , printStyled
     , printLnStyled
     )
     where
 
+import TermSize
 import Data.List (intersperse)
 
 data Style = Style
@@ -80,3 +86,20 @@ printLnStyled s o = printStyled s (o ++ "\n")
 
 clearScreen :: IO ()
 clearScreen = putStr "\ESC[2J\ESC[H"
+
+clearLine :: IO ()
+clearLine = putStr "\ESC[K"
+
+deleteN :: Int -> IO ()
+deleteN n = putStr $ "\ESC[" ++ (show n) ++ "D\ESC[K"
+
+moveCursorLeft :: Int -> IO ()
+moveCursorLeft n = putStr $ "\ESC[" ++ (show n) ++ "D"
+
+moveCursorRight :: Int -> IO ()
+moveCursorRight n = putStr $ "\ESC[" ++ (show n) ++ "C"
+
+moveCursorEOL :: IO () 
+moveCursorEOL = do
+    (_, line) <- getTermSize
+    putStr $ "\ESC[" ++ (show line) ++ "D"
