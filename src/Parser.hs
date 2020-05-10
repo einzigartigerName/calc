@@ -157,7 +157,7 @@ lexNum xs i = case lexer' rest (i + (length num)) of
     where (num, rest) = span (\x -> isDigit x || x == '.') xs
 
 -- lex alpha
-lexAlpha :: String -> Int -> Result([Token])
+lexAlpha :: String -> Int -> Result [Token]
 -- Absolut Value
 lexAlpha (stripPrefix "abs" -> Just xs) i = case lexer' xs (i + 3) of
     Result r -> Result (Func Abs : r)
@@ -311,9 +311,7 @@ preHigher a b =
     let (pA, aA) = getPrecedence a
         (pB, aB) = getPrecedence b
         in
-            if pA == pB && (aA == Parser.Right && aB == Parser.Right)
-                then True
-                else pA > pB
+            (pA == pB && (aA == Parser.Right && aB == Parser.Right)) || (pA > pB)
 
 
 -- get Precedence of Operator

@@ -21,7 +21,6 @@ Syntax: `func(..)`
 
 ## Dependencies
 * ghc
-* [ansi-terminal](https://github.com/feuerbach/ansi-terminal)
 
 ## Install
 ```bash

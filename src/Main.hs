@@ -2,11 +2,12 @@ module Main where
 
 import Parser
 import Evaluate
+import ANSI
 
 import System.IO
 import System.Exit
 import System.Environment
-import System.Console.ANSI
+-- import System.Console.ANSI
 
 data OutputFlag = Verbose | Normal
 data InteractiveFlag = Interactive | Single
@@ -88,11 +89,8 @@ errorLocation s 0 = "\t" ++ s
 errorLocation s i = errorLocation (' ' : s) (i - 1)
 
 printRed :: String -> IO ()
-printRed s = do
-    setSGR [SetColor Foreground Vivid Red]
-    putStrLn s
-    setSGR [Reset]
-
+printRed s = let red = Style {fg = Red, bg = Black, attr = []} in
+    printLnStyled red s
 
 parseArgs :: [String] -> Flags -> IO ()
 parseArgs [] fs = execute fs Nothing
@@ -128,7 +126,6 @@ usage = do
 clearOut :: IO ()
 clearOut = do
     clearScreen
-    setCursorPosition 0 0
 
 exit :: IO ()
 exit = do
