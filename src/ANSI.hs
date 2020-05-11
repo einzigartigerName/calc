@@ -94,10 +94,10 @@ deleteN :: Int -> IO ()
 deleteN n = putStr $ "\ESC[" ++ (show n) ++ "D\ESC[K"
 
 moveCursorLeft :: Int -> IO ()
-moveCursorLeft n = putStr $ "\ESC[" ++ (show n) ++ "D"
+moveCursorLeft n = if n > 0 then putStr $ "\ESC[" ++ (show n) ++ "D" else return ()
 
 moveCursorRight :: Int -> IO ()
-moveCursorRight n = putStr $ "\ESC[" ++ (show n) ++ "C"
+moveCursorRight n = if n > 0 then putStr $ "\ESC[" ++ (show n) ++ "C" else return ()
 
 moveCursorEOL :: IO () 
 moveCursorEOL = do

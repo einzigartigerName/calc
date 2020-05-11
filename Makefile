@@ -12,7 +12,7 @@ PREFIX			:= /usr/local/
 INSTALL_DIR		:= bin/
 MAN_DIR			:= man/man1/
 
-VERSION			:= v2.0.1
+VERSION			:= v2.0.2
 
 build: clean version
 	hsc2hs $(SOURCE_DIR)$(HSC_MODULE)
