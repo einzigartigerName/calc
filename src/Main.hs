@@ -177,7 +177,7 @@ useBuffer :: String                                 -- buffer to use
             -> IO (Cursor String)                   -- new history
 useBuffer buffer history (oflag, aflag) =
     let buff = cleanBuffer buffer
-        cursor = C.fromList $ (C.toList history) ++ [buff]
+        cursor = C.fromList $ reverse $ (C.toList history) ++ [buff]
     in if buff /= []
         then do
             putStr "\n"
