@@ -33,7 +33,7 @@ foreign import ccall "sys/ioctl.h ioctl"
 getTermSize :: IO (Int, Int)
 getTermSize = 
   with (WinSize 0 0) $ \ws -> do
-    throwErrnoIfMinus1 "ioctl" $
+    _ <- throwErrnoIfMinus1 "ioctl" $
       ioctl (#const STDOUT_FILENO) (#const TIOCGWINSZ) ws
     WinSize row col <- peek ws
     return (fromIntegral row, fromIntegral col)

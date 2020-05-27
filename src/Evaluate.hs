@@ -33,6 +33,10 @@ eval' (Power : ts) aflag s = case evalPower s of
     Result r    -> eval' ts aflag r
     _           -> MathError
 
+eval' (Factorial : ts) aflag s = case evalFactorial s of
+    Result r    -> eval' ts aflag r
+    _           -> MathError
+
 eval' (Func f : ts) aflag s = case evalFunc f s aflag of
     Result r    -> eval' ts aflag r
     _           -> MathError
@@ -59,6 +63,10 @@ evalPower :: [Token] -> Result [Token]
 evalPower (Val a : Val b : xs) = Result ((Val ((**) b a)) : xs)
 evalPower _ = MathError
 
+evalFactorial :: [Token] -> Result [Token]
+evalFactorial (Val a : xs) = if isInt a 7 then Result (Val (product [1.. fromInteger $ round a]) : xs) else MathError
+evalFactorial _ = MathError
+
 evalFunc :: Function -> [Token] -> AngleFlag -> Result [Token]
 evalFunc Abs        (Val a : xs) _      = Result (Val (abs a)                       : xs)
 evalFunc Tan        (Val a : xs) aflag  = Result (Val (tan  (convDeg aflag a))      : xs)
@@ -77,3 +85,7 @@ evalFunc _ _ _ = MathError
 convDeg :: AngleFlag -> Double -> Double
 convDeg Deg val     = val * (pi / 180)
 convDeg None val    = val
+
+--Returns if x is an int to n decimal places
+isInt :: (Integral a, RealFrac b) => b -> a -> Bool
+isInt x n = (round $ 10^(fromIntegral n)*(x-(fromIntegral $ round x)))==0

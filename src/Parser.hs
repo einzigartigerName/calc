@@ -51,6 +51,7 @@ data Token =
     | Times
     | Div
     | Power
+    | Factorial
     | Func Function
     | OpenBrack
     | CloseBrack
@@ -66,6 +67,7 @@ instance Show Token where
         Times       -> "*"
         Div         -> "/"
         Power       -> "^"
+        Factorial   -> "!"
         Func f     -> show f
         OpenBrack   -> "("
         CloseBrack  -> ")"
@@ -78,11 +80,12 @@ printTokenList ts = foldl (\acc t -> acc ++ show t ++ " ") "" ts
 
 opDict :: Dictionary Token (Int, Associativity)
 opDict = Dictionary [
-    Element (Plus,  (1, Parser.Left)),
-    Element (Minus, (1, Parser.Left)),
-    Element (Times, (2, Parser.Left)),
-    Element (Div,   (2, Parser.Left)),
-    Element (Power, (3, Parser.Right))]
+    Element (Plus,      (1, Parser.Left)),
+    Element (Minus,     (1, Parser.Left)),
+    Element (Times,     (2, Parser.Left)),
+    Element (Div,       (2, Parser.Left)),
+    Element (Power,     (3, Parser.Right)),
+    Element (Factorial, (4, Parser.Left))]
 
 {-----------------Constants-----------------}
 getPi :: Double
@@ -131,6 +134,11 @@ lexer' ('/' : xs) i = case lexer' xs (i + 1) of
 -- Power
 lexer' ('^' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Power : r)
+    err -> err
+
+-- Factorial
+lexer' ('!' : xs) i = case lexer' xs (i + 1) of
+    Result r -> Result (Factorial : r)
     err -> err
 
 -- OpenBrack
