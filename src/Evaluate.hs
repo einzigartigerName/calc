@@ -21,6 +21,10 @@ eval' (Minus : ts) aflag s = case evalMinus s of
     Result r    -> eval' ts aflag r
     _           -> MathError
 
+eval' (Modulo : ts) aflag s = case evalModulo s of
+    Result r    -> eval' ts aflag r
+    _           -> MathError
+
 eval' (Times : ts) aflag s = case evalTimes s of
     Result r    -> eval' ts aflag r
     _           -> MathError
@@ -51,6 +55,14 @@ evalMinus :: [Token] -> Result [Token]
 evalMinus (Val a : Val b : xs) =  Result ((Val (b - a)) : xs)
 evalMinus _ = MathError
 
+evalModulo :: [Token] -> Result [Token]
+evalModulo (Val a : Val b : xs) = if isInt a && isInt b
+    then let ma = fromInteger $ round a
+             mb = fromInteger $ round b
+        in Result (Val (fromIntegral $ mod mb ma) : xs)
+    else MathError
+evalModulo _ = MathError
+
 evalTimes :: [Token] -> Result [Token]
 evalTimes (Val a : Val b : xs) =  Result ((Val (b * a)) : xs)
 evalTimes _ = MathError
@@ -64,7 +76,9 @@ evalPower (Val a : Val b : xs) = Result ((Val ((**) b a)) : xs)
 evalPower _ = MathError
 
 evalFactorial :: [Token] -> Result [Token]
-evalFactorial (Val a : xs) = if isInt a 7 then Result (Val (product [1.. fromInteger $ round a]) : xs) else MathError
+evalFactorial (Val a : xs) = if isInt a
+    then Result (Val (product [1.. fromInteger $ round a]) : xs)
+    else MathError
 evalFactorial _ = MathError
 
 evalFunc :: Function -> [Token] -> AngleFlag -> Result [Token]
@@ -87,5 +101,5 @@ convDeg Deg val     = val * (pi / 180)
 convDeg None val    = val
 
 --Returns if x is an int to n decimal places
-isInt :: (Integral a, RealFrac b) => b -> a -> Bool
-isInt x n = (round $ 10^(fromIntegral n)*(x-(fromIntegral $ round x)))==0
+isInt :: RealFrac a => a -> Bool
+isInt x = (round $ 10^(fromIntegral 7)*(x-(fromIntegral $ round x)))==0

@@ -48,6 +48,7 @@ data Token =
     | Eul
     | Plus
     | Minus
+    | Modulo
     | Times
     | Div
     | Power
@@ -64,6 +65,7 @@ instance Show Token where
         Eul         -> "E"
         Plus        -> "+"
         Minus       -> "-"
+        Modulo      -> "%"
         Times       -> "*"
         Div         -> "/"
         Power       -> "^"
@@ -79,13 +81,15 @@ printTokenList ts = foldl (\acc t -> acc ++ show t ++ " ") "" ts
 
 
 opDict :: Dictionary Token (Int, Associativity)
-opDict = Dictionary [
-    Element (Plus,      (1, Parser.Left)),
-    Element (Minus,     (1, Parser.Left)),
-    Element (Times,     (2, Parser.Left)),
-    Element (Div,       (2, Parser.Left)),
-    Element (Power,     (3, Parser.Right)),
-    Element (Factorial, (4, Parser.Left))]
+opDict = Dictionary
+    [ Element (Plus,      (1, Parser.Left))
+    , Element (Minus,     (1, Parser.Left))
+    , Element (Modulo,    (2, Parser.Left))
+    , Element (Times,     (3, Parser.Left))
+    , Element (Div,       (3, Parser.Left))
+    , Element (Power,     (4, Parser.Right))
+    , Element (Factorial, (5, Parser.Left))
+    ]
 
 {-----------------Constants-----------------}
 getPi :: Double
@@ -119,6 +123,11 @@ lexer' ('+' : xs) i = case lexer' xs (i + 1) of
 -- Minus
 lexer' ('-' : xs) i = case lexer' xs (i + 1) of
     Result r -> Result (Minus : r)
+    err -> err
+
+-- Modulo
+lexer' ('%' : xs) i = case lexer' xs (i + 1) of
+    Result r -> Result (Modulo : r)
     err -> err
 
 -- Times
