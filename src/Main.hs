@@ -102,7 +102,7 @@ historyUp history buffer = case C.selected history of
 historyDown :: Cursor String                        -- Current history
             -> String                               -- buffer if nothing is in history
             -> (String, Cursor String)              -- buffer to write, shifted history
-historyDown history buffer = case C.selectPrevious history of
+historyDown history buffer = case C.selectPrev history of
     Just c -> case C.selected c of
         Just sel -> (sel, c)
         Nothing -> (buffer, history)
@@ -177,7 +177,7 @@ useBuffer :: String                                 -- buffer to use
             -> IO (Cursor String)                   -- new history
 useBuffer buffer history (oflag, aflag) =
     let buff = cleanBuffer buffer
-        cursor = C.fromList $ reverse $ (C.toList history) ++ [buff]
+        Just cursor = C.fromListSelect 0 $ reverse $ (C.toList history) ++ [buff]
     in if buff /= []
         then do
             putStr "\n"
