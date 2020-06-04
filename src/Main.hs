@@ -50,63 +50,65 @@ withRawInput vmin vtime application = do
         `finally` setTerminalAttributes stdInput oldTermSettings Immediately
 
 -- handle key input
-readInputFromTerminal :: String                     -- buffer
+readInputFromTerminal :: Cursor Char                     -- buffer
                     -> Cursor String                -- history
                     -> (OutputFlag, AngleFlag)      -- flags to execute with
-                    -> IO (String, Cursor String)   -- new buffer and history
+                    -> IO (Cursor Char, Cursor String)   -- new buffer and history
 readInputFromTerminal buffer history flags = (do
-    (str, _) <- fdRead stdInput 3
-    case str of
-        -- no new input -> return buffer
-        ""          -> return (buffer, history)
+        (str, _) <- fdRead stdInput 3
+        case str of
+            -- no new input -> return buffer
+            ""          -> return (buffer, history)
 
-        -- delete last char in buffer
-        "\DEL"      -> return $ if buffer /= []
-            then (init buffer, history)
-            else ([], history)
-        
-        -- next in history
-        "\ESC[A"    -> return $ historyUp history buffer
-        
-        -- previous in history
-        "\ESC[B"    -> return $ historyDown history buffer
-        
-        -- deactivate left/right
-        "\ESC[C"    -> return $ (buffer, history)
-        "\ESC[D"    -> return $ (buffer, history)
-        
-        -- on new line use buffer
-        "\n"        -> do
-            cursor <- useBuffer buffer history flags
-            return ([], cursor)
-        -- usable input, write to buffer
-        x           -> return $ (buffer ++ x, history)
-  ) `catch` (
-    (const $ return (buffer, history) :: IOException -> IO (String, Cursor String))
-  )
+            -- delete last char in buffer
+            "\DEL"      -> return (C.removeSelectedFocusPrev buffer, history)
+
+            -- next in history
+            "\ESC[A"    -> return $ historyUp history buffer
+
+            -- previous in history
+            "\ESC[B"    -> return $ historyDown history buffer
+
+            -- deactivate left/right
+            "\ESC[C"    -> return $ (buffer, history)
+            "\ESC[D"    -> return $ (buffer, history)
+
+            -- on new line use buffer
+            "\n"        -> do
+                cursor <- useBuffer (C.toList buffer) history flags
+                return (C.empty, cursor)
+            -- usable input, write to buffer
+            x           -> return (buff x, history)
+    ) `catch` (
+      (const $ return (buffer, history) :: IOException -> IO (Cursor Char, Cursor String))
+    )
+    where
+        buff x = case C.selectPrevN (length x) (C.insertListAbove buffer $ reverse x) of
+            Just cur -> cur
+            Nothing -> C.fromList x
 
 
 
 
 -- go up in history
 historyUp :: Cursor String                          -- Current history
-            -> String                               -- buffer if nothing is in history
-            -> (String, Cursor String)              -- buffer to write, shifted history
+            -> Cursor Char                               -- buffer if nothing is in history
+            -> (Cursor Char, Cursor String)              -- buffer to write, shifted history
 historyUp history buffer = case C.selected history of
     Just sel -> case C.selectNext history of
-        Just c -> (sel, c)
-        Nothing -> (sel, history)
-    Nothing -> (buffer, C.fromList [])
+        Just c -> (C.fromList sel, c)
+        Nothing -> (C.fromList sel, history)
+    Nothing -> (buffer, C.empty)
 
 -- go down in history
 historyDown :: Cursor String                        -- Current history
-            -> String                               -- buffer if nothing is in history
-            -> (String, Cursor String)              -- buffer to write, shifted history
+            -> Cursor Char                               -- buffer if nothing is in history
+            -> (Cursor Char, Cursor String)              -- buffer to write, shifted history
 historyDown history buffer = case C.selectPrev history of
     Just c -> case C.selected c of
-        Just sel -> (sel, c)
+        Just sel -> (C.fromList sel, c)
         Nothing -> (buffer, history)
-    Nothing -> ("", history)
+    Nothing -> (C.empty, history)
 
 
 
@@ -115,13 +117,13 @@ cleanBuffer :: String -> String
 cleanBuffer = dropWhileEnd isSpace . dropWhile isSpace
 
 -- main loop: read and write buffer
-loop :: String                                      -- buffer
+loop :: Cursor Char                                      -- buffer
     -> Cursor String                                -- history
     -> (OutputFlag, AngleFlag)                      -- flags to operate with
     -> IO ()
 loop buff curs flags = do
     (buffer, history) <- readInputFromTerminal buff curs flags
-    when (buffer /= buff) (writeBuffer buffer)
+    when (C.toList buffer /= C.toList buff) (writeBuffer $ C.toList buffer)
     loop buffer history flags
 
 
@@ -287,7 +289,7 @@ argThenInteractive input oflag aflag = do
 startLoop :: OutputFlag -> AngleFlag -> IO ()
 startLoop oflag aflag = do
     writeBuffer []
-    withRawInput 0 1 $ loop "" (C.fromList []) (oflag, aflag)
+    withRawInput 0 1 $ loop C.empty (C.fromList []) (oflag, aflag)
 
 -- version
 version :: IO ()
